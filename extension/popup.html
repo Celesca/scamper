@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --text: #f8fafc;
+            --text-secondary: #94a3b8;
+        }
+
+        body {
+            width: 320px;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), #60a5fa);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .status-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+
+        .status-text {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .status-score {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .reasons {
+            margin-top: 16px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .reason-item {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .reason-bullet {
+            color: var(--primary);
+        }
+
+        .loader {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .safe { border-color: var(--success); color: var(--success); }
+        .suspicious { border-color: var(--warning); color: var(--warning); }
+        .danger { border-color: var(--danger); color: var(--danger); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">P</div>
+        <div class="title">Phishing Hunter</div>
+    </div>
+
+    <div id="loading" class="loader"></div>
+
+    <div id="content" style="display: none;">
+        <div id="status-card" class="status-card">
+            <div id="status-icon" class="status-icon">🛡️</div>
+            <div id="status-text" class="status-text">Analyzing...</div>
+            <div id="status-score" class="status-score">Threat Score: 0/100</div>
+        </div>
+
+        <div id="reasons" class="reasons">
+            <!-- Reasons will be injected here -->
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
