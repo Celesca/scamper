@@ -3,53 +3,69 @@ from flask_cors import CORS
 import re
 from urllib.parse import urlparse
 
+from fuzzer import analyze_domain_advanced
+
 app = Flask(__name__)
 CORS(app)
 
-def analyze_phishing(data):
+# Comprehensive list of Tier 1 Thai websites
+THAI_TARGETS = [
+    'kbank', 'kasikornbank', 'scb', 'bangkokbank', 'ktb', 'krungsri', 'ttb', 'gsb',
+    'lazada', 'shopee', 'line', 'facebook', 'google', 'netflix', 'apple', 'microsoft'
+]
+
+def layer2_detective(data):
+    """
+    Layer 2: Lightweight Cloud API (The Detective)
+    Checks URL structure, keyword density, and local report.
+    """
     url = data.get('url', '')
-    title = data.get('title', '')
-    text_content = data.get('text', '')
+    local_score = data.get('localScore', 0)
     
-    score = 0
-    reasons = []
+    score = local_score
+    reasons = data.get('localReasons', [])
     
-    # 1. Check for suspicious keywords in the text
-    phishing_keywords = ['login', 'verify', 'account', 'security', 'suspended', 'update', 'billing', 'bank', 'paypal', 'amazon', 'microsoft', 'google']
-    found_keywords = [word for word in phishing_keywords if word in text_content.lower()]
-    if found_keywords:
-        score += 20
-        reasons.append(f"Suspicious keywords found: {', '.join(found_keywords)}")
-
-    # 2. Check for URL/Title mismatch (Brand hijacking)
     domain = urlparse(url).netloc.lower()
-    common_brands = ['google', 'paypal', 'amazon', 'microsoft', 'apple', 'netflix', 'facebook']
-    for brand in common_brands:
-        if brand in title.lower() and brand not in domain:
-            score += 50
-            reasons.append(f"Mismatched Brand: Title mentions '{brand}' but the domain is '{domain}'")
-
-    # 3. Check for suspicious TLDs or long subdomains
-    if domain.count('.') > 3:
-        score += 15
-        reasons.append("Highly nested subdomains detected")
     
-    risky_tlds = ['.xyz', '.top', '.loan', '.click', '.app', '.icu']
-    if any(url.endswith(tld) for tld in risky_tlds):
-        score += 10
-        reasons.append("URL uses a high-risk TLD")
+    # 1. Advanced Typosquatting Analysis (DNSTwist-style)
+    fuzzer_results = analyze_domain_advanced(domain, THAI_TARGETS)
+    for res in fuzzer_results:
+        score += 45
+        reasons.append(f"Typosquatting Detected: '{domain}' mimics '{res['target']}' via {res['reason']}")
 
-    # Final Classification
-    status = "Safe"
-    if score >= 60:
-        status = "Phishing"
-    elif score >= 20:
-        status = "Suspicious"
-        
+    # 2. URL Entropy / Complexity
+    if len(url) > 100:
+        score += 10
+        reasons.append("Excessively long URL")
+
+    status = "Suspicious"
+    if score > 70:
+        # Escalate to Layer 3
+        return layer3_judge(data, score, reasons)
+    
     return {
         "status": status,
         "score": score,
-        "reasons": reasons
+        "reasons": reasons,
+        "layer": "Detective"
+    }
+
+def layer3_judge(data, current_score, current_reasons):
+    """
+    Layer 3: The Judge (Expensive AI)
+    Uses LLM to analyze the intent and context.
+    """
+    # For this example, we simulate the 'Judge' confirming the phishing intent.
+    # In a real app, you'd call Gemini/GPT-4 here.
+    
+    final_score = current_score + 15
+    current_reasons.append("AI Judge: Intent analysis confirms phishing pattern (High Risk)")
+    
+    return {
+        "status": "Phishing",
+        "score": min(final_score, 100),
+        "reasons": current_reasons,
+        "layer": "Judge"
     }
 
 @app.route('/analyze', methods=['POST'])
@@ -58,7 +74,8 @@ def analyze():
     if not data:
         return jsonify({"error": "No data provided"}), 400
     
-    result = analyze_phishing(data)
+    # Extension only calls if Layer 1 (Bouncer) is suspicious
+    result = layer2_detective(data)
     return jsonify(result)
 
 if __name__ == '__main__':

@@ -13,19 +13,33 @@ def test_api():
             }
         },
         {
-            "name": "Phishing PayPal",
+            "name": "Typosquat PayPal (Homoglyph)",
             "data": {
-                "url": "http://pay-pal-security-update.xyz/login",
-                "title": "PayPal: Log In",
-                "text": "Please login to verify your account and update your billing information immediately."
+                "url": "http://p4ypal.xyz",
+                "title": "PayPal Security",
+                "text": "Login to your account",
+                "localScore": 25,
+                "localReasons": ["Suspicious TLD"]
             }
         },
         {
-            "name": "Suspicious Bank",
+            "name": "Lookalike K-Bank (1-char diff)",
             "data": {
-                "url": "http://my-bank-login.com",
-                "title": "Secure Login",
-                "text": "Welcome to your bank. Please enter your credentials to continue."
+                "url": "http://k-bank.net",
+                "title": "KBank Online",
+                "text": "ยืนยันตัวตน",
+                "localScore": 30,
+                "localReasons": ["Thai keywords detected"]
+            }
+        },
+        {
+            "name": "Lookalike Shopee (Similarity)",
+            "data": {
+                "url": "http://shopee-sale.com",
+                "title": "Shopee Mall",
+                "text": "Special discount for you",
+                "localScore": 20,
+                "localReasons": ["Login form detected"]
             }
         }
     ]
