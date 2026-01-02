@@ -144,4 +144,5 @@ def index():
     })
 
 if __name__ == '__main__':
-    socketio.run(app, port=5000, debug=True, allow_unsafe_werkzeug=True)
+    # Disable reloader to prevent restarts when Playwright modifies its files
+    socketio.run(app, port=5000, debug=True, use_reloader=False, allow_unsafe_werkzeug=True)

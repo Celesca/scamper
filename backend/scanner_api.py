@@ -292,3 +292,229 @@ def quick_check():
         'is_suspicious': is_suspicious,
         'matched_target': matched_target
     })
+
+
+# ============================================================================
+# DEEP ANALYSIS ENDPOINTS (3-Layer System)
+# ============================================================================
+
+@scanner_bp.route('/deep-scan', methods=['POST'])
+def deep_scan():
+    """
+    Run comprehensive 3-layer analysis on a domain and its permutations.
+    
+    Request body:
+    {
+        "domain": "kbank.com",
+        "include_screenshots": true,
+        "include_dom": true,
+        "analyze_registered_only": true
+    }
+    """
+    import asyncio
+    
+    data = request.json
+    if not data or 'domain' not in data:
+        return jsonify({'error': 'Domain is required'}), 400
+    
+    target_domain = data['domain'].strip().lower()
+    include_screenshots = data.get('include_screenshots', True)
+    include_dom = data.get('include_dom', True)
+    analyze_registered_only = data.get('analyze_registered_only', True)
+    
+    # Remove protocol if present
+    if '://' in target_domain:
+        target_domain = target_domain.split('://')[1]
+    target_domain = target_domain.split('/')[0]
+    
+    start_time = time.time()
+    
+    # Generate permutations and resolve DNS first
+    fuzzer = SimpleFuzzer(target_domain)
+    permutations = fuzzer.generate()
+    
+    # Resolve domains in parallel 
+    basic_results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(resolve_domain, p['domain']): p for p in permutations}
+        
+        for future in concurrent.futures.as_completed(futures, timeout=30):
+            perm = futures[future]
+            try:
+                dns_result = future.result()
+                result = {**dns_result, 'fuzzer': perm['fuzzer']}
+                result = calculate_risk(result, target_domain)
+                basic_results.append(result)
+            except Exception as e:
+                logger.error(f"Error resolving {perm['domain']}: {e}")
+    
+    # Sort by risk score
+    basic_results.sort(key=lambda x: x['risk_score'], reverse=True)
+    
+    # Select domains for deep analysis
+    if analyze_registered_only:
+        candidates = [r for r in basic_results if r['is_registered']][:10]
+    else:
+        candidates = basic_results[:10]
+    
+    # Run deep analysis on candidates
+    deep_results = []
+    if candidates:
+        try:
+            from deep_analyzer import get_deep_analyzer
+            analyzer = get_deep_analyzer()
+            
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                async def analyze_all():
+                    tasks = [
+                        analyzer.analyze(
+                            c['domain'], 
+                            target_domain,
+                            include_screenshot=include_screenshots,
+                            include_dom=include_dom
+                        )
+                        for c in candidates
+                    ]
+                    return await asyncio.gather(*tasks, return_exceptions=True)
+                
+                results = loop.run_until_complete(analyze_all())
+                
+                for result in results:
+                    if isinstance(result, Exception):
+                        logger.error(f"Deep analysis error: {result}")
+                    else:
+                        deep_results.append(result.to_dict())
+            finally:
+                loop.close()
+        except ImportError as e:
+            logger.warning(f"Deep analyzer not available: {e}")
+    
+    scan_time = time.time() - start_time
+    registered = [r for r in basic_results if r['is_registered']]
+    high_risk = [r for r in basic_results if r['risk_score'] >= 70]
+    
+    return jsonify({
+        'target': target_domain,
+        'total_permutations': len(basic_results),
+        'registered_count': len(registered),
+        'high_risk_count': len(high_risk),
+        'basic_results': basic_results,
+        'deep_analysis': deep_results,
+        'scan_time': round(scan_time, 2)
+    })
+
+
+@scanner_bp.route('/analyze-single', methods=['POST'])
+def analyze_single():
+    """
+    Run deep 3-layer analysis on a single domain.
+    
+    Request body:
+    {
+        "domain": "suspicious-kbank.xyz",
+        "target_domain": "kbank.com",
+        "include_screenshot": true,
+        "include_dom": true
+    }
+    """
+    import asyncio
+    
+    data = request.json
+    if not data or 'domain' not in data:
+        return jsonify({'error': 'Domain is required'}), 400
+    
+    domain = data['domain'].strip().lower()
+    target_domain = data.get('target_domain', '').strip().lower()
+    include_screenshot = data.get('include_screenshot', True)
+    include_dom = data.get('include_dom', True)
+    
+    # If no target specified, try to detect
+    if not target_domain:
+        thai_targets = ['kbank', 'scb', 'kasikorn', 'bangkok', 'krungsri', 'ttb', 'gsb', 'lazada', 'shopee', 'line']
+        for t in thai_targets:
+            if t in domain:
+                target_domain = f"{t}.com"
+                break
+    
+    if not target_domain:
+        target_domain = domain  # Analyze without comparison
+    
+    try:
+        from deep_analyzer import get_deep_analyzer
+        analyzer = get_deep_analyzer()
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(
+                analyzer.analyze(
+                    domain,
+                    target_domain,
+                    include_screenshot=include_screenshot,
+                    include_dom=include_dom
+                )
+            )
+            return jsonify(result.to_dict())
+        finally:
+            loop.close()
+    except ImportError:
+        return jsonify({'error': 'Deep analyzer not available'}), 500
+    except Exception as e:
+        logger.error(f"Analysis failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@scanner_bp.route('/takedown-report', methods=['POST'])
+def generate_takedown_report():
+    """
+    Generate a takedown evidence report for a suspicious domain.
+    
+    Request body:
+    {
+        "domain": "suspicious-kbank.xyz",
+        "target_domain": "kbank.com"
+    }
+    """
+    import asyncio
+    
+    data = request.json
+    if not data or 'domain' not in data:
+        return jsonify({'error': 'Domain is required'}), 400
+    
+    domain = data['domain'].strip().lower()
+    target_domain = data.get('target_domain', '').strip().lower() or domain
+    
+    try:
+        from deep_analyzer import get_deep_analyzer, TakedownReportGenerator
+        analyzer = get_deep_analyzer()
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            # Run full analysis first
+            analysis = loop.run_until_complete(
+                analyzer.analyze(
+                    domain,
+                    target_domain,
+                    include_screenshot=True,
+                    include_dom=True
+                )
+            )
+            
+            # Generate report
+            report = TakedownReportGenerator.generate_report(analysis)
+            
+            # Include full analysis in report
+            report['full_analysis'] = analysis.to_dict()
+            
+            return jsonify(report)
+        finally:
+            loop.close()
+    except ImportError:
+        return jsonify({'error': 'Deep analyzer not available'}), 500
+    except Exception as e:
+        logger.error(f"Report generation failed: {e}")
+        return jsonify({'error': str(e)}), 500
+
