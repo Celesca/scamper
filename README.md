@@ -1,153 +1,72 @@
-# 🛡️ SCAMMER HUNTER
+# 🛡️ Thai Brand Guardian
 
-**A comprehensive phishing detection and prevention system designed to protect Thai users from online scams.**
+**AI-Powered Phishing Detection & Active Defense System for Thai Brands**
 
-![Version](https://img.shields.io/badge/version-2.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-active-brightgreen)
+<div align="center">
 
----
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.9+-green.svg)
+![Next.js](https://img.shields.io/badge/Next.js-16+-black.svg)
 
-## 🎯 Overview
+*Protect Thai banks, e-commerce platforms, and enterprises from phishing attacks with real-time monitoring, computer vision detection, and active defense capabilities.*
 
-Scammer Hunter is a multi-layered defense system that detects and blocks phishing websites in real-time. It combines browser extension technology, cloud-based analysis, and Certificate Transparency log monitoring to provide proactive protection against online scams.
-
----
-
-## 🏗️ Architecture
-
-```mermaid
-graph TB
-    subgraph "User Layer"
-        B[🌐 Browser Extension]
-        U[👤 User]
-    end
-    
-    subgraph "Detection Layer"
-        L1[Layer 1: Bouncer<br/>Local Analysis]
-        L2[Layer 2: Detective<br/>Cloud API]
-        L3[Layer 3: Judge<br/>AI Analysis]
-    end
-    
-    subgraph "Proactive Layer"
-        W[🗼 Watchtower<br/>CT Log Monitor]
-        DB[(Detection DB)]
-        WS[WebSocket<br/>Real-time Feed]
-    end
-    
-    subgraph "Frontend"
-        DASH[📊 Dashboard]
-        LIVE[Live Feed]
-        STATS[Statistics]
-    end
-    
-    U --> B
-    B --> L1
-    L1 -->|Suspicious| L2
-    L2 -->|High Risk| L3
-    L3 -->|Verdict| B
-    
-    W -->|Certificate Events| DB
-    W --> WS
-    WS --> DASH
-    DASH --> LIVE
-    DASH --> STATS
-```
+</div>
 
 ---
 
-## 🔧 Components
+## 🚀 Features
 
-### 1. 🌐 Browser Extension
+### 🗼 Watchtower - Real-time CT Log Monitoring
+Monitor Certificate Transparency logs in real-time to detect suspicious domain registrations targeting Thai brands.
 
-Chrome extension that provides real-time page analysis:
+- **DNSTwist-style fuzzing**: Detects typosquatting, homoglyphs, and lookalike domains
+- **Thai brand focus**: Monitors KBTG, KBank, SCB, Lazada, Shopee, LINE, and more
+- **Instant alerts**: WebSocket-powered real-time notifications
 
-- **Layer 1 (Bouncer)**: Local DOM analysis, form detection, suspicious keyword matching
-- **Escalation**: Sends suspicious pages to cloud API for deeper analysis
-- **User Alerts**: Visual warnings for detected phishing attempts
+### 🔍 Domain Scanner
+On-demand scanning of domains with comprehensive vulnerability analysis.
 
-### 2. ☁️ Backend API (Flask)
+- **Permutation generation**: Creates thousands of potential phishing variants
+- **DNS resolution**: Checks which domains are actually registered
+- **Risk scoring**: AI-powered threat assessment
 
-Cloud-based detection service:
+### 👁️ Computer Vision Detection
+AI-powered visual analysis catches zero-day phishing sites that bypass blacklists.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/analyze` | POST | Analyze URL for phishing indicators |
-| `/api/watchtower/status` | GET | Get Watchtower monitoring status |
-| `/api/watchtower/start` | POST | Start CT log monitoring |
-| `/api/watchtower/stop` | POST | Stop CT log monitoring |
-| `/api/watchtower/detections` | GET | Get recent detections (paginated) |
-| `/api/watchtower/stats` | GET | Get aggregated statistics |
-| `/api/watchtower/targets` | GET | Get list of monitored targets |
+- **Logo detection**: Identifies unauthorized use of brand logos
+- **Visual similarity**: Compares screenshots against legitimate sites
+- **Thai UI patterns**: Recognizes PromptPay/Thai QR Payment impersonation
 
-### 3. 🗼 Watchtower (CT Log Monitor)
+### 🤖 Active Defense - Poisoning Bot
+Fight back against phishers by polluting their captured data.
 
-Real-time Certificate Transparency log monitoring using DNSTwist-style algorithms:
+- **Fake credential generation**: Creates realistic-looking fake data
+- **Form detection**: Automatically identifies phishing input fields
+- **Demo mode**: Safe testing without actual submission
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     WATCHTOWER v2.0                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    │
-│   │  CertStream │───▶│   Fuzzer    │───▶│  Detection  │    │
-│   │  (CT Logs)  │    │   Engine    │    │   Engine    │    │
-│   └─────────────┘    └─────────────┘    └─────────────┘    │
-│                                                │            │
-│                           ┌────────────────────┘            │
-│                           ▼                                 │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    │
-│   │  WebSocket  │◀───│   Stats     │◀───│   Alerts    │    │
-│   │   Events    │    │   Tracker   │    │   System    │    │
-│   └─────────────┘    └─────────────┘    └─────────────┘    │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+### 📧 Automated Takedown
+Streamlined reporting to hosting providers.
 
-**Fuzzing Algorithms:**
-- 🔀 Bitsquatting (single bit flips)
-- 👁️ Homoglyphs (look-alike characters)
-- ➖ Hyphenation (inserted hyphens)
-- ➕ Insertion (extra characters)
-- ➖ Omission (missing characters)
-- 🔁 Repetition (doubled characters)
-- 🔄 Replacement (keyboard typos)
-- ↔️ Transposition (swapped characters)
-- 🔤 Vowel swaps
-- 📝 Common phishing additions
+- **Evidence packages**: Auto-generated screenshots and logs
+- **Provider templates**: Pre-formatted emails for major hosts
+- **Status tracking**: Monitor takedown progress
 
-### 4. 📊 Frontend Dashboard (Next.js)
+### 🔌 Chrome Extension
+Browser-based protection with 3-layer detection.
 
-Real-time monitoring dashboard with:
-
-- **Live Detection Feed**: Streaming phishing domain detections
-- **Statistics Cards**: Certificates scanned, domains checked, detections
-- **Target Breakdown**: Detection count by targeted brand
-- **Attack Type Analysis**: Detection count by fuzzer type
-- **Dark Mode UI**: Cybersecurity-themed interface
+- **Layer 1 (Bouncer)**: Fast local checks in content script
+- **Layer 2 (Detective)**: Backend typosquatting analysis
+- **Layer 3 (Judge)**: AI intent analysis for edge cases
 
 ---
 
-## 🎯 Monitored Targets
-
-### Thai Banks
-`kbank` `kasikornbank` `scb` `krungthai` `bangkokbank` `krungsri` `ttb` `gsb` `uob` `cimb` `lhbank`
-
-### Government & Financial
-`paotang` `thaichana` `promptpay` `baac`
-
-### E-Wallets & Payment
-`truemoney` `truewallet` `linepay` `shopeepay` `airpay` `bluepay`
-
----
-
-## 🚀 Quick Start
+## 📦 Installation
 
 ### Prerequisites
 
 - Python 3.9+
 - Node.js 18+
-- Chrome/Brave browser
+- Chrome browser (for extension)
 
 ### Backend Setup
 
@@ -162,9 +81,14 @@ source venv/bin/activate  # Linux/Mac
 # Install dependencies
 pip install -r requirements.txt
 
-# Start server
+# Install Playwright browsers (for screenshot service)
+playwright install chromium
+
+# Start the server
 python app.py
 ```
+
+The API will be available at `http://localhost:5000`
 
 ### Frontend Setup
 
@@ -178,128 +102,110 @@ npm install
 npm run dev
 ```
 
-### Extension Setup
+Visit `http://localhost:3000` to access the dashboard.
 
-1. Open Chrome and navigate to `chrome://extensions`
+### Chrome Extension
+
+1. Open Chrome and go to `chrome://extensions/`
 2. Enable "Developer mode"
 3. Click "Load unpacked"
-4. Select the `extension` folder
+4. Select the `extension/` folder
 
 ---
 
-## 📡 WebSocket Events
+## 🎯 API Endpoints
 
-The Watchtower emits real-time events via Socket.IO:
+### Watchtower API
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/watchtower/status` | GET | Get monitoring status |
+| `/api/watchtower/start` | POST | Start CT log monitoring |
+| `/api/watchtower/stop` | POST | Stop monitoring |
+| `/api/watchtower/detections` | GET | Get detected threats |
 
-| Event | Payload | Description |
-|-------|---------|-------------|
-| `new_detection` | `Detection` object | New phishing domain detected |
-| `stats_update` | `Stats` object | Updated statistics |
-| `watchtower_error` | `{ error: string }` | Error notification |
+### Scanner API
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/scanner/scan` | POST | Scan a domain for threats |
+| `/api/scanner/permutations` | POST | Get domain permutations |
+| `/api/scanner/screenshot` | POST | Capture site screenshot |
 
----
-
-## 🔒 Detection Scoring
-
-Risk scores are calculated based on multiple factors:
-
-| Factor | Score Impact |
-|--------|--------------|
-| Homoglyph/Bitsquatting attack | +40 |
-| Addition/Hyphenation attack | +30 |
-| Other typosquatting | +25 |
-| Suspicious TLD (.xyz, .top, etc.) | +25 |
-| Multiple hyphens | +15 |
-| Security keywords (secure, verify, etc.) | +15 |
-| Unusually long domain | +10 |
-| Contains numbers | +5 |
-| Direct keyword match | +20 |
-
-**Risk Levels:**
-- 🔴 **Critical** (70-100): High confidence phishing
-- 🟠 **High** (50-69): Strong indicators
-- 🟡 **Medium** (30-49): Moderate suspicion
-- 🟢 **Low** (0-29): Minimal indicators
+### Analysis API
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/analyze` | POST | Analyze page for phishing |
 
 ---
 
-## 📁 Project Structure
+## 🏗️ Architecture
 
 ```
-scammer-hunter/
-├── backend/
-│   ├── app.py              # Flask API server
-│   ├── watchtower.py       # CT log monitor
-│   ├── watchtower_api.py   # WebSocket API
-│   ├── fuzzer.py           # Domain fuzzing
-│   ├── scam_hunter.py      # Hunter bot
-│   └── requirements.txt    # Python dependencies
-├── frontend/
-│   ├── app/
-│   │   ├── page.tsx        # Home page
-│   │   ├── watchtower/
-│   │   │   └── page.tsx    # Dashboard
-│   │   └── globals.css     # Global styles
-│   ├── package.json        # Node dependencies
-│   └── next.config.ts      # Next.js config
-├── extension/
-│   ├── manifest.json       # Extension manifest
-│   ├── background.js       # Service worker
-│   └── content.js          # Content script
-└── README.md               # This file
+┌─────────────────────────────────────────────────────────────┐
+│                      Frontend (Next.js)                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ Landing Page │  │   Scanner    │  │  Extension   │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Backend (Flask)                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │  Watchtower  │  │   Scanner    │  │  CV Detector │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+│  ┌──────────────┐  ┌──────────────┐                         │
+│  │ Poisoning Bot│  │   Takedown   │                         │
+│  └──────────────┘  └──────────────┘                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     External Services                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │  Certstream  │  │ DNS Servers  │  │   Hosting    │       │
+│  │  (CT Logs)   │  │              │  │  Providers   │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Development
+## 🇹🇭 Thai-Specific Features
 
-### Running Tests
+- **Thai bank monitoring**: KBank, SCB, Bangkok Bank, KTB, Krungsri, TTB, GSB
+- **Thai keyword detection**: ยืนยันตัวตน, OTP, ระงับบัญชี, อัปเดตข้อมูล
+- **PromptPay pattern recognition**: Detects fake Thai QR Payment interfaces
+- **LINE-based redirect detection**: Catches LINE-to-phishing redirects
 
-```bash
-# Backend tests
-cd backend
-python test_backend.py
+---
 
-# Watchtower test mode
-python watchtower.py --test
-```
+## 🛠️ Tech Stack
 
-### Generating Permutations
+| Component | Technology |
+|-----------|------------|
+| Frontend | Next.js 16, React 19, Tailwind CSS 4 |
+| Backend | Flask, Flask-SocketIO |
+| CT Monitoring | Certstream |
+| Domain Fuzzing | DNSTwist-style algorithms |
+| Screenshots | Playwright |
+| CV Analysis | CLIP / Image Similarity |
 
-```bash
-# Generate all permutations for a domain
-python watchtower.py --generate kbank
-```
+---
+
+## 📄 License
+
+MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- [Certstream](https://certstream.calidog.io/) - Real-time CT log streaming
-- [DNSTwist](https://github.com/elceef/dnstwist) - Domain permutation algorithms
-- [Next.js](https://nextjs.org/) - React framework
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
+Contributions welcome! Please read our contributing guidelines before submitting PRs.
 
 ---
 
 <div align="center">
-
-**Built with ❤️ to protect Thai internet users**
-
+<strong>Built for Samsung x KBTG Hackathon 2026</strong>
+<br>
+Protecting Thai digital citizens from online fraud
 </div>

@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from fuzzer import analyze_domain_advanced
 from watchtower_api import watchtower_bp, init_watchtower_api
+from scanner_api import scanner_bp
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -13,11 +14,39 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Initialize SocketIO with CORS support
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
-# Register Watchtower API blueprint
+# Register API blueprints
 app.register_blueprint(watchtower_bp)
+app.register_blueprint(scanner_bp)
 
 # Initialize Watchtower service
 init_watchtower_api(socketio)
+
+# Try to register optional blueprints
+try:
+    from screenshot_service import create_screenshot_routes
+    create_screenshot_routes(scanner_bp)
+except ImportError:
+    pass
+
+try:
+    from poisoning_bot import create_poisoning_routes
+    # Create a separate blueprint for poisoning (demo only)
+    from flask import Blueprint
+    poison_bp = Blueprint('poison', __name__, url_prefix='/api/poison')
+    create_poisoning_routes(poison_bp)
+    app.register_blueprint(poison_bp)
+except ImportError:
+    pass
+
+try:
+    from cv_detector import create_cv_routes
+    # Create a separate blueprint for CV detection
+    from flask import Blueprint
+    cv_bp = Blueprint('cv', __name__, url_prefix='/api/cv')
+    create_cv_routes(cv_bp)
+    app.register_blueprint(cv_bp)
+except ImportError:
+    pass
 
 # Comprehensive list of Tier 1 Thai websites
 THAI_TARGETS = [
@@ -88,6 +117,30 @@ def analyze():
     # Extension only calls if Layer 1 (Bouncer) is suspicious
     result = layer2_detective(data)
     return jsonify(result)
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check endpoint."""
+    return jsonify({
+        "status": "healthy",
+        "service": "Thai Brand Guardian API",
+        "version": "1.0.0"
+    })
+
+@app.route('/', methods=['GET'])
+def index():
+    """API root endpoint."""
+    return jsonify({
+        "name": "Thai Brand Guardian API",
+        "version": "1.0.0",
+        "endpoints": {
+            "watchtower": "/api/watchtower/*",
+            "scanner": "/api/scanner/*",
+            "cv_detector": "/api/cv/*",
+            "poisoning": "/api/poison/*",
+            "analyze": "/analyze"
+        }
+    })
 
 if __name__ == '__main__':
     socketio.run(app, port=5000, debug=True, allow_unsafe_werkzeug=True)

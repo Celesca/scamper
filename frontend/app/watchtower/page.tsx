@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import AnimatedBackground from "../components/AnimatedBackground";
 
 // Types
 interface Detection {
@@ -149,8 +152,6 @@ export default function WatchtowerPage() {
     const [connected, setConnected] = useState(false);
     const [newDetectionIds, setNewDetectionIds] = useState<Set<string>>(new Set());
     const [filter, setFilter] = useState<string>("all");
-    const wsRef = useRef<WebSocket | null>(null);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Fetch initial data
     const fetchData = useCallback(async () => {
@@ -171,27 +172,6 @@ export default function WatchtowerPage() {
             console.error("Failed to fetch data:", error);
         }
     }, []);
-
-    // Connect to WebSocket using Socket.IO protocol
-    const connectWebSocket = useCallback(() => {
-        // For Socket.IO, we'll use polling fallback via REST API
-        // Full WebSocket would require socket.io-client
-        const pollInterval = setInterval(async () => {
-            if (!connected) return;
-            try {
-                const res = await fetch(`${API_BASE}/api/watchtower/status`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setStatus(data);
-                }
-            } catch {
-                // Ignore polling errors
-            }
-        }, 2000);
-
-        setConnected(true);
-        return () => clearInterval(pollInterval);
-    }, [connected]);
 
     // Start/stop monitoring
     const toggleMonitoring = async () => {
@@ -220,9 +200,6 @@ export default function WatchtowerPage() {
 
         return () => {
             clearInterval(pollInterval);
-            if (reconnectTimeoutRef.current) {
-                clearTimeout(reconnectTimeoutRef.current);
-            }
         };
     }, [fetchData]);
 
@@ -246,56 +223,47 @@ export default function WatchtowerPage() {
 
     return (
         <div className="min-h-screen bg-slate-950 text-white">
-            {/* Animated background */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -inset-[10px] opacity-20">
-                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500 rounded-full blur-[128px] animate-pulse" />
-                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500 rounded-full blur-[128px] animate-pulse delay-1000" />
-                </div>
-            </div>
+            <AnimatedBackground />
+            <Navbar />
 
-            <div className="relative z-10">
-                {/* Header */}
-                <header className="border-b border-slate-800/50 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50">
-                    <div className="max-w-7xl mx-auto px-6 py-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="relative">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/30">
-                                        🗼
-                                    </div>
-                                    {status?.is_running && (
-                                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-ping" />
-                                    )}
+            <main className="relative z-10 pt-24 pb-16 px-6">
+                <div className="max-w-7xl mx-auto">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-3xl shadow-lg shadow-cyan-500/30">
+                                    🗼
                                 </div>
-                                <div>
-                                    <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                                        WATCHTOWER
-                                    </h1>
-                                    <p className="text-sm text-slate-400">
-                                        Real-time Certificate Transparency Monitor
-                                    </p>
-                                </div>
+                                {status?.is_running && (
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-ping" />
+                                )}
                             </div>
-
-                            <div className="flex items-center gap-6">
-                                <ConnectionStatus connected={connected} running={status?.is_running || false} />
-
-                                <button
-                                    onClick={toggleMonitoring}
-                                    className={`px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${status?.is_running
-                                            ? "bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30"
-                                            : "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30"
-                                        }`}
-                                >
-                                    {status?.is_running ? "⏹ Stop" : "▶ Start"} Monitoring
-                                </button>
+                            <div>
+                                <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                                    WATCHTOWER
+                                </h1>
+                                <p className="text-sm text-slate-400">
+                                    Real-time Certificate Transparency Monitor
+                                </p>
                             </div>
                         </div>
-                    </div>
-                </header>
 
-                <main className="max-w-7xl mx-auto px-6 py-8">
+                        <div className="flex items-center gap-6">
+                            <ConnectionStatus connected={connected} running={status?.is_running || false} />
+
+                            <button
+                                onClick={toggleMonitoring}
+                                className={`px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 ${status?.is_running
+                                    ? "bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30"
+                                    : "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30"
+                                    }`}
+                            >
+                                {status?.is_running ? "⏹ Stop" : "▶ Start"} Monitoring
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Stats Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         <StatsCard
@@ -343,8 +311,8 @@ export default function WatchtowerPage() {
                                             key={f}
                                             onClick={() => setFilter(f)}
                                             className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === f
-                                                    ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
-                                                    : "text-slate-400 hover:text-white"
+                                                ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
+                                                : "text-slate-400 hover:text-white"
                                                 }`}
                                         >
                                             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -352,7 +320,7 @@ export default function WatchtowerPage() {
                                     ))}
                                 </div>
                             </div>
-                            <div className="h-[500px] overflow-y-auto custom-scrollbar">
+                            <div className="h-[500px] overflow-y-auto">
                                 {filteredDetections.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-full text-slate-500">
                                         <span className="text-4xl mb-4">🔭</span>
@@ -470,33 +438,10 @@ export default function WatchtowerPage() {
                             </div>
                         </div>
                     </div>
-                </main>
-            </div>
+                </div>
+            </main>
 
-            {/* Custom scrollbar styles */}
-            <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgb(15 23 42 / 0.5);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgb(71 85 105 / 0.5);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgb(71 85 105 / 0.8);
-        }
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.5;
-          }
-        }
-      `}</style>
+            <Footer />
         </div>
     );
 }
