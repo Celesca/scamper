@@ -1,12 +1,23 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO
 import re
 from urllib.parse import urlparse
 
 from fuzzer import analyze_domain_advanced
+from watchtower_api import watchtower_bp, init_watchtower_api
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Initialize SocketIO with CORS support
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# Register Watchtower API blueprint
+app.register_blueprint(watchtower_bp)
+
+# Initialize Watchtower service
+init_watchtower_api(socketio)
 
 # Comprehensive list of Tier 1 Thai websites
 THAI_TARGETS = [
@@ -79,4 +90,4 @@ def analyze():
     return jsonify(result)
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    socketio.run(app, port=5000, debug=True, allow_unsafe_werkzeug=True)
