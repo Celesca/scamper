@@ -8,15 +8,17 @@ export default function Footer() {
                     {/* Brand */}
                     <div className="md:col-span-2">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-600 flex items-center justify-center text-xl shadow-lg shadow-cyan-500/30">
-                                🛡️
-                            </div>
+                            <img
+                                src="/scamper_icon.jpg"
+                                alt="Scamper"
+                                className="w-10 h-10 rounded-xl shadow-lg shadow-cyan-500/30 object-cover"
+                            />
                             <span className="text-lg font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-                                Thai Brand Guardian
+                                Scamper
                             </span>
                         </div>
                         <p className="text-slate-400 text-sm max-w-md mb-4">
-                            AI-powered phishing detection and active defense system designed specifically for Thai brands.
+                            AI-powered phishing detection and active defense system.
                             Protect your business from typosquatting, lookalike domains, and sophisticated phishing attacks.
                         </p>
                         <p className="text-slate-500 text-xs">
@@ -71,7 +73,7 @@ export default function Footer() {
 
                 <div className="border-t border-slate-800/50 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                     <p className="text-slate-500 text-sm">
-                        © 2026 Thai Brand Guardian. All rights reserved.
+                        © 2026 Scamper. All rights reserved.
                     </p>
                     <div className="flex items-center gap-6">
                         <a href="#" className="text-slate-400 hover:text-white transition-colors">

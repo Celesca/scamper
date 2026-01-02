@@ -8,9 +8,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Thai Brand Guardian - AI-Powered Phishing Protection",
-  description: "Protect Thai brands from phishing attacks with real-time CT log monitoring, AI vision detection, and active defense systems.",
-  keywords: ["phishing protection", "brand security", "Thai cybersecurity", "domain monitoring", "typosquatting detection"],
+  title: "Scamper - AI-Powered Phishing Protection",
+  description: "Protect your brand from phishing attacks with real-time CT log monitoring, AI vision detection, and active defense systems.",
+  keywords: ["phishing protection", "brand security", "Thai cybersecurity", "domain monitoring", "typosquatting detection", "scamper"],
+  icons: {
+    icon: "/scamper_icon.jpg",
+    apple: "/scamper_icon.jpg",
+  },
 };
 
 export default function RootLayout({
