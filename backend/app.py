@@ -14,19 +14,20 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Initialize SocketIO with CORS support
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
-# Register API blueprints
-app.register_blueprint(watchtower_bp)
-app.register_blueprint(scanner_bp)
-
-# Initialize Watchtower service
-init_watchtower_api(socketio)
-
-# Try to register optional blueprints
+# Add optional routes to blueprints BEFORE registering them
+# (Flask requires all routes to be added before blueprint registration)
 try:
     from screenshot_service import create_screenshot_routes
     create_screenshot_routes(scanner_bp)
 except ImportError:
     pass
+
+# Register API blueprints (after all routes are added)
+app.register_blueprint(watchtower_bp)
+app.register_blueprint(scanner_bp)
+
+# Initialize Watchtower service
+init_watchtower_api(socketio)
 
 try:
     from poisoning_bot import create_poisoning_routes

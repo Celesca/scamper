@@ -96,15 +96,81 @@ class WatchtowerService:
     def _run_monitor(self):
         """Run the CT log monitor (called in background thread)."""
         import certstream
+        import random
+        import logging
         
+        logger = logging.getLogger('WATCHTOWER')
+        
+        # Simulated phishing domains for demo/testing
+        DEMO_DOMAINS = [
+            ('kbank-secure-login.xyz', 'kbank', 'addition'),
+            ('kasikornbank-verify.top', 'kasikorn', 'addition'),
+            ('scb-update-account.club', 'scb', 'addition'),
+            ('krungthai-online.site', 'krungthai', 'addition'),
+            ('truem0ney-wallet.xyz', 'truemoney', 'homoglyph'),
+            ('linesecure-pay.info', 'linepay', 'addition'),
+            ('kbannk-login.com', 'kbank', 'repetition'),
+            ('kasikornbamk.net', 'kasikorn', 'transposition'),
+            ('scb-thailand-verify.xyz', 'scb', 'addition'),
+            ('secure-kbank-th.online', 'kbank', 'addition'),
+        ]
+        
+        def run_demo_mode():
+            """Run in demo mode with simulated detections."""
+            logger.warning("Running in DEMO MODE - generating simulated detections")
+            self.socketio.emit('watchtower_info', {'message': 'Demo mode active - simulating detections'})
+            
+            while self.is_running:
+                # Simulate processing certificates
+                for _ in range(random.randint(50, 150)):
+                    self.stats.record_cert()
+                    self.stats.record_domain()
+                
+                # Occasionally generate a detection (roughly 1 every 10-30 seconds)
+                if random.random() < 0.15:
+                    domain_info = random.choice(DEMO_DOMAINS)
+                    demo_domain = domain_info[0]
+                    
+                    # Create fake cert_data
+                    fake_cert_data = {
+                        'leaf_cert': {
+                            'issuer': {'O': "Let's Encrypt"},
+                            'all_domains': [demo_domain]
+                        }
+                    }
+                    
+                    detection = self._analyze_domain(demo_domain, fake_cert_data)
+                    if detection:
+                        with self._lock:
+                            self.detections.append(detection)
+                            self.stats.record_detection(detection)
+                        
+                        self._save_detection(detection)
+                        self.socketio.emit('new_detection', detection.to_dict())
+                        logger.info(f"[DEMO] Detection: {demo_domain}")
+                
+                # Emit stats update
+                self.socketio.emit('stats_update', self.stats.to_dict())
+                time.sleep(2)
+        
+        # Try real certstream first
         try:
+            logger.info("Connecting to certstream.calidog.io...")
+            self.socketio.emit('watchtower_info', {'message': 'Connecting to CT log stream...'})
+            
             certstream.listen_for_events(
                 self._on_cert_event,
                 url='wss://certstream.calidog.io/'
             )
         except Exception as e:
-            self.socketio.emit('watchtower_error', {'error': str(e)})
-            self.is_running = False
+            logger.error(f"Certstream connection failed: {e}")
+            logger.info("Falling back to demo mode...")
+            self.socketio.emit('watchtower_error', {
+                'error': f'CT log stream unavailable: {str(e)}. Running in demo mode.'
+            })
+            
+            # Fall back to demo mode
+            run_demo_mode()
     
     def _on_cert_event(self, message: dict, context):
         """Handle incoming certificate events."""
