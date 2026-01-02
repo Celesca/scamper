@@ -1,3 +1,24 @@
+# Core Flask dependencies
 flask
 flask-cors
+flask-socketio
+python-engineio
+python-socketio
 requests
+
+# CT Log monitoring
+certstream
+
+# Domain analysis
+dnstwist
+
+# Screenshot service (headless browser)
+playwright
+
+# Image processing for CV detection
+Pillow
+scikit-image
+numpy
+
+# Fake data generation for poisoning bot
+faker
