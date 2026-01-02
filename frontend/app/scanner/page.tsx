@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import AnimatedBackground from "../components/AnimatedBackground";
 
+// Types
 interface ScanResult {
     domain: string;
     fuzzer: string;
@@ -15,17 +16,59 @@ interface ScanResult {
     risk_factors: string[];
 }
 
+interface DOMAnalysis {
+    has_login_form: boolean;
+    has_password_field: boolean;
+    form_count: number;
+    form_actions: string[];
+    input_fields: { type: string; name: string; placeholder: string }[];
+    suspicious_elements: string[];
+    thai_keywords_found: string[];
+    meta_title: string;
+}
+
+interface LayerResult {
+    score: number;
+    factors: string[];
+}
+
+interface Layer3Result extends LayerResult {
+    verdict: string;
+    confidence: number;
+    reasoning: string;
+    recommendation: string;
+}
+
+interface DeepAnalysis {
+    domain: string;
+    target_domain: string;
+    analysis_time: string;
+    layer1: LayerResult & { fuzzer_type: string; is_registered: boolean; dns_a: string[] };
+    layer2: LayerResult & {
+        screenshot_b64?: string;
+        favicon_url?: string;
+        dom_analysis?: DOMAnalysis;
+        page_accessible: boolean;
+    };
+    layer3: Layer3Result;
+    final_score: number;
+    recommendation: string;
+}
+
 interface ScanResponse {
     target: string;
     total_permutations: number;
     registered_count: number;
     high_risk_count: number;
-    results: ScanResult[];
+    basic_results?: ScanResult[];
+    results?: ScanResult[];
+    deep_analysis?: DeepAnalysis[];
     scan_time: number;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+// Risk level badge
 function RiskBadge({ score }: { score: number }) {
     const level = score >= 70 ? "critical" : score >= 50 ? "high" : score >= 30 ? "medium" : "low";
     const colors = {
@@ -42,6 +85,310 @@ function RiskBadge({ score }: { score: number }) {
     );
 }
 
+// Recommendation badge
+function RecommendationBadge({ recommendation }: { recommendation: string }) {
+    const colors: Record<string, string> = {
+        takedown: "bg-red-500/20 text-red-400 border-red-500/50",
+        investigate: "bg-orange-500/20 text-orange-400 border-orange-500/50",
+        monitor: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
+        safe: "bg-green-500/20 text-green-400 border-green-500/50",
+    };
+
+    const icons: Record<string, string> = {
+        takedown: "⚠️",
+        investigate: "🔍",
+        monitor: "👁️",
+        safe: "✅",
+    };
+
+    return (
+        <span className={`px-3 py-1 rounded-full text-sm font-bold border flex items-center gap-1.5 ${colors[recommendation] || colors.monitor}`}>
+            {icons[recommendation] || "📋"} {recommendation.charAt(0).toUpperCase() + recommendation.slice(1)}
+        </span>
+    );
+}
+
+// Layer progress indicator
+function LayerProgress({ current, layers }: { current: number; layers: string[] }) {
+    return (
+        <div className="flex items-center gap-2 mb-6">
+            {layers.map((layer, i) => (
+                <div key={layer} className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${i < current
+                        ? "bg-green-500 text-white"
+                        : i === current
+                            ? "bg-cyan-500 text-white animate-pulse"
+                            : "bg-slate-700 text-slate-400"
+                        }`}>
+                        {i < current ? "✓" : i + 1}
+                    </div>
+                    {i < layers.length - 1 && (
+                        <div className={`w-12 h-0.5 mx-1 ${i < current ? "bg-green-500" : "bg-slate-700"}`} />
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// Result card component
+function ResultCard({
+    result,
+    onAnalyze,
+    isAnalyzing,
+    deepAnalysis,
+}: {
+    result: ScanResult;
+    onAnalyze: () => void;
+    isAnalyzing: boolean;
+    deepAnalysis?: DeepAnalysis;
+}) {
+    const [expanded, setExpanded] = useState(false);
+
+    const riskLevel = result.risk_score >= 70 ? "critical" : result.risk_score >= 50 ? "high" : result.risk_score >= 30 ? "medium" : "low";
+    const borderColor = {
+        critical: "border-red-500/50 hover:border-red-500",
+        high: "border-orange-500/50 hover:border-orange-500",
+        medium: "border-yellow-500/50 hover:border-yellow-500",
+        low: "border-slate-600/50 hover:border-slate-500",
+    };
+
+    return (
+        <div className={`bg-slate-900/80 border-2 rounded-xl overflow-hidden transition-all duration-300 ${borderColor[riskLevel]} ${expanded ? "ring-2 ring-cyan-500/30" : ""}`}>
+            {/* Header - Always visible */}
+            <div
+                className="p-4 cursor-pointer flex items-center justify-between"
+                onClick={() => setExpanded(!expanded)}
+            >
+                <div className="flex items-center gap-4 flex-1">
+                    {/* Status indicator */}
+                    <div className={`w-3 h-3 rounded-full ${result.is_registered ? "bg-amber-400 animate-pulse" : "bg-slate-500"}`} />
+
+                    {/* Domain */}
+                    <div className="flex-1">
+                        <span className="font-mono text-sm text-cyan-400">{result.domain}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="px-2 py-0.5 rounded bg-slate-700/50 text-xs text-slate-300">
+                                {result.fuzzer}
+                            </span>
+                            {result.is_registered && (
+                                <span className="text-xs text-amber-400">● Registered</span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Risk score */}
+                    <RiskBadge score={result.risk_score} />
+
+                    {/* Deep analysis status */}
+                    {deepAnalysis && (
+                        <RecommendationBadge recommendation={deepAnalysis.recommendation} />
+                    )}
+                </div>
+
+                {/* Expand icon */}
+                <svg
+                    className={`w-5 h-5 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+
+            {/* Expanded content */}
+            {expanded && (
+                <div className="border-t border-slate-700/50 p-4 space-y-4">
+                    {/* Risk factors */}
+                    {result.risk_factors.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-medium text-slate-400 mb-2">Risk Factors</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {result.risk_factors.map((factor, i) => (
+                                    <span key={i} className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300">
+                                        {factor}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* DNS Info */}
+                    {result.dns_a.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-medium text-slate-400 mb-2">DNS Records</h4>
+                            <div className="font-mono text-xs text-slate-300">
+                                A: {result.dns_a.join(", ")}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Deep Analysis Results */}
+                    {deepAnalysis && (
+                        <div className="space-y-4 pt-4 border-t border-slate-700/50">
+                            <h4 className="text-sm font-medium text-cyan-400 flex items-center gap-2">
+                                <span>🔬</span> Deep Analysis Results
+                            </h4>
+
+                            {/* 3-Layer Summary */}
+                            <div className="grid grid-cols-3 gap-4">
+                                {/* Layer 1 */}
+                                <div className="bg-slate-800/50 rounded-lg p-3">
+                                    <div className="text-xs text-slate-400 mb-1">Layer 1: Bouncer</div>
+                                    <div className="text-2xl font-bold text-cyan-400">{deepAnalysis.layer1.score}</div>
+                                    <div className="text-xs text-slate-500 mt-1">{deepAnalysis.layer1.factors.length} factors</div>
+                                </div>
+
+                                {/* Layer 2 */}
+                                <div className="bg-slate-800/50 rounded-lg p-3">
+                                    <div className="text-xs text-slate-400 mb-1">Layer 2: Detective</div>
+                                    <div className="text-2xl font-bold text-purple-400">{deepAnalysis.layer2.score}</div>
+                                    <div className="text-xs text-slate-500 mt-1">
+                                        {deepAnalysis.layer2.page_accessible ? "Page analyzed" : "Not accessible"}
+                                    </div>
+                                </div>
+
+                                {/* Layer 3 */}
+                                <div className="bg-slate-800/50 rounded-lg p-3">
+                                    <div className="text-xs text-slate-400 mb-1">Layer 3: Judge</div>
+                                    <div className="text-2xl font-bold text-amber-400">{deepAnalysis.layer3.score}</div>
+                                    <div className="text-xs text-slate-500 mt-1">
+                                        {Math.round(deepAnalysis.layer3.confidence * 100)}% confidence
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Verdict */}
+                            <div className="bg-slate-800/30 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-white">Verdict: {deepAnalysis.layer3.verdict}</span>
+                                    <span className="text-3xl font-bold text-cyan-400">{deepAnalysis.final_score}/100</span>
+                                </div>
+                                <p className="text-sm text-slate-400">{deepAnalysis.layer3.reasoning}</p>
+                            </div>
+
+                            {/* DOM Analysis */}
+                            {deepAnalysis.layer2.dom_analysis && (
+                                <div className="bg-slate-800/30 rounded-lg p-4">
+                                    <h5 className="text-sm font-medium text-white mb-3">DOM Analysis</h5>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div className="text-center">
+                                            <div className={`text-2xl ${deepAnalysis.layer2.dom_analysis.has_login_form ? "text-red-400" : "text-green-400"}`}>
+                                                {deepAnalysis.layer2.dom_analysis.has_login_form ? "⚠️" : "✓"}
+                                            </div>
+                                            <div className="text-xs text-slate-400 mt-1">Login Form</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className={`text-2xl ${deepAnalysis.layer2.dom_analysis.has_password_field ? "text-red-400" : "text-green-400"}`}>
+                                                {deepAnalysis.layer2.dom_analysis.has_password_field ? "⚠️" : "✓"}
+                                            </div>
+                                            <div className="text-xs text-slate-400 mt-1">Password Field</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-2xl text-slate-300">{deepAnalysis.layer2.dom_analysis.form_count}</div>
+                                            <div className="text-xs text-slate-400 mt-1">Forms</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-2xl text-slate-300">{deepAnalysis.layer2.dom_analysis.thai_keywords_found?.length || 0}</div>
+                                            <div className="text-xs text-slate-400 mt-1">Thai Keywords</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Thai keywords found */}
+                                    {deepAnalysis.layer2.dom_analysis.thai_keywords_found?.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-slate-700/50">
+                                            <div className="text-xs text-slate-400 mb-2">Thai Phishing Keywords Detected:</div>
+                                            <div className="flex flex-wrap gap-1">
+                                                {deepAnalysis.layer2.dom_analysis.thai_keywords_found.map((kw, i) => (
+                                                    <span key={i} className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs">
+                                                        {kw}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Input fields */}
+                                    {deepAnalysis.layer2.dom_analysis.input_fields?.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-slate-700/50">
+                                            <div className="text-xs text-slate-400 mb-2">Form Inputs Detected:</div>
+                                            <div className="space-y-1">
+                                                {deepAnalysis.layer2.dom_analysis.input_fields.slice(0, 5).map((field, i) => (
+                                                    <div key={i} className="flex items-center gap-2 text-xs">
+                                                        <span className={`px-1.5 py-0.5 rounded ${field.type === 'password' ? 'bg-red-500/20 text-red-400' : 'bg-slate-700 text-slate-300'}`}>
+                                                            {field.type}
+                                                        </span>
+                                                        <span className="text-slate-400">{field.name || field.placeholder || '(unnamed)'}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Screenshot */}
+                            {deepAnalysis.layer2.screenshot_b64 && (
+                                <div className="bg-slate-800/30 rounded-lg p-4">
+                                    <h5 className="text-sm font-medium text-white mb-3">Page Screenshot</h5>
+                                    <img
+                                        src={`data:image/png;base64,${deepAnalysis.layer2.screenshot_b64}`}
+                                        alt="Page screenshot"
+                                        className="w-full rounded-lg border border-slate-700"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2 pt-4">
+                        {result.is_registered && !deepAnalysis && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onAnalyze(); }}
+                                disabled={isAnalyzing}
+                                className="px-4 py-2 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 transition-all text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {isAnalyzing ? (
+                                    <>
+                                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Analyzing...
+                                    </>
+                                ) : (
+                                    <>🔬 Deep Analyze</>
+                                )}
+                            </button>
+                        )}
+
+                        {deepAnalysis && deepAnalysis.recommendation === 'takedown' && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); window.open(`/takedown?domain=${result.domain}`, '_blank'); }}
+                                className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30 transition-all text-sm font-medium flex items-center gap-2"
+                            >
+                                ⚠️ Request Takedown
+                            </button>
+                        )}
+
+                        <a
+                            href={`https://${result.domain}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-4 py-2 rounded-lg border border-slate-600 text-slate-300 hover:border-slate-400 hover:text-white transition-all text-sm flex items-center gap-2"
+                        >
+                            🔗 Visit
+                        </a>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function ScannerPage() {
     const [domain, setDomain] = useState("");
     const [isScanning, setIsScanning] = useState(false);
@@ -50,6 +397,9 @@ export default function ScannerPage() {
     const [results, setResults] = useState<ScanResponse | null>(null);
     const [error, setError] = useState("");
     const [filter, setFilter] = useState<"all" | "registered" | "high-risk">("all");
+    const [deepAnalyses, setDeepAnalyses] = useState<Record<string, DeepAnalysis>>({});
+    const [analyzingDomains, setAnalyzingDomains] = useState<Set<string>>(new Set());
+    const [useDeepScan, setUseDeepScan] = useState(true);
 
     const startScan = useCallback(async () => {
         if (!domain.trim()) {
@@ -60,26 +410,19 @@ export default function ScannerPage() {
         setIsScanning(true);
         setError("");
         setResults(null);
+        setDeepAnalyses({});
         setScanProgress(0);
 
-        // Simulate scan progress
         const progressInterval = setInterval(() => {
             setScanProgress((prev) => {
-                if (prev >= 90) {
-                    clearInterval(progressInterval);
-                    return prev;
-                }
-                const increment = Math.random() * 15;
-                return Math.min(prev + increment, 90);
+                if (prev >= 90) return prev;
+                return Math.min(prev + Math.random() * 15, 90);
             });
         }, 500);
 
-        const stages = [
-            "Generating permutations...",
-            "Checking DNS records...",
-            "Analyzing risk factors...",
-            "Compiling results..."
-        ];
+        const stages = useDeepScan
+            ? ["Generating permutations...", "Checking DNS records...", "Running deep analysis...", "Analyzing DOM structure...", "Compiling results..."]
+            : ["Generating permutations...", "Checking DNS records...", "Analyzing risk factors...", "Compiling results..."];
 
         let stageIndex = 0;
         const stageInterval = setInterval(() => {
@@ -88,10 +431,16 @@ export default function ScannerPage() {
         }, 1500);
 
         try {
-            const res = await fetch(`${API_BASE}/api/scanner/scan`, {
+            const endpoint = useDeepScan ? "/api/scanner/deep-scan" : "/api/scanner/scan";
+            const res = await fetch(`${API_BASE}${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ domain: domain.trim() }),
+                body: JSON.stringify({
+                    domain: domain.trim(),
+                    include_screenshots: true,
+                    include_dom: true,
+                    analyze_registered_only: true
+                }),
             });
 
             if (!res.ok) {
@@ -99,74 +448,68 @@ export default function ScannerPage() {
             }
 
             const data = await res.json();
+
+            // Normalize results
+            if (data.basic_results && !data.results) {
+                data.results = data.basic_results;
+            }
+
             setResults(data);
             setScanProgress(100);
+
+            // Store deep analysis results
+            if (data.deep_analysis) {
+                const analyses: Record<string, DeepAnalysis> = {};
+                data.deep_analysis.forEach((a: DeepAnalysis) => {
+                    analyses[a.domain] = a;
+                });
+                setDeepAnalyses(analyses);
+            }
         } catch (err) {
-            // For demo, generate mock results if backend is not available
-            const mockResults = generateMockResults(domain.trim());
-            setResults(mockResults);
-            setScanProgress(100);
+            setError("Scan failed. Make sure the backend is running.");
+            console.error(err);
         } finally {
             clearInterval(progressInterval);
             clearInterval(stageInterval);
             setIsScanning(false);
             setScanStatus("");
         }
-    }, [domain]);
+    }, [domain, useDeepScan]);
 
-    const generateMockResults = (targetDomain: string): ScanResponse => {
-        const baseName = targetDomain.split(".")[0];
-        const fuzzers = ["homoglyph", "typosquatting", "addition", "omission", "hyphenation", "subdomain"];
-        const tlds = [".com", ".net", ".org", ".xyz", ".io", ".app", ".co", ".info"];
+    const analyzeSingleDomain = async (targetDomain: string) => {
+        setAnalyzingDomains((prev) => new Set(prev).add(targetDomain));
 
-        const results: ScanResult[] = [];
-
-        // Generate various permutations
-        const permutations = [
-            { domain: `${baseName}-secure.com`, fuzzer: "addition" },
-            { domain: `${baseName}-login.net`, fuzzer: "addition" },
-            { domain: `${baseName}s.com`, fuzzer: "typosquatting" },
-            { domain: `${baseName.replace("a", "4")}.com`, fuzzer: "homoglyph" },
-            { domain: `${baseName.replace("o", "0")}.xyz`, fuzzer: "homoglyph" },
-            { domain: `${baseName.slice(0, -1)}.com`, fuzzer: "omission" },
-            { domain: `${baseName}-thailand.com`, fuzzer: "addition" },
-            { domain: `secure-${baseName}.io`, fuzzer: "subdomain" },
-            { domain: `${baseName}.co.th`, fuzzer: "tld-swap" },
-            { domain: `${baseName}official.com`, fuzzer: "addition" },
-        ];
-
-        permutations.forEach((p, i) => {
-            const isRegistered = Math.random() > 0.6;
-            const riskScore = isRegistered ? Math.floor(Math.random() * 60) + 30 : Math.floor(Math.random() * 30);
-
-            results.push({
-                domain: p.domain,
-                fuzzer: p.fuzzer,
-                dns_a: isRegistered ? [`192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`] : [],
-                dns_mx: isRegistered && Math.random() > 0.5 ? [`mail.${p.domain}`] : [],
-                is_registered: isRegistered,
-                risk_score: riskScore,
-                risk_factors: isRegistered ? [
-                    "Domain is registered",
-                    riskScore >= 70 ? "High similarity to target" : "Moderate similarity",
-                    p.fuzzer === "homoglyph" ? "Uses lookalike characters" : `Uses ${p.fuzzer} technique`,
-                ] : [],
+        try {
+            const res = await fetch(`${API_BASE}/api/scanner/analyze-single`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    domain: targetDomain,
+                    target_domain: domain,
+                    include_screenshot: true,
+                    include_dom: true
+                }),
             });
-        });
 
-        const registered = results.filter(r => r.is_registered);
-
-        return {
-            target: targetDomain,
-            total_permutations: results.length + Math.floor(Math.random() * 500),
-            registered_count: registered.length,
-            high_risk_count: registered.filter(r => r.risk_score >= 70).length,
-            results: results.sort((a, b) => b.risk_score - a.risk_score),
-            scan_time: Math.random() * 5 + 2,
-        };
+            if (res.ok) {
+                const analysis = await res.json();
+                setDeepAnalyses((prev) => ({
+                    ...prev,
+                    [targetDomain]: analysis
+                }));
+            }
+        } catch (err) {
+            console.error("Deep analysis failed:", err);
+        } finally {
+            setAnalyzingDomains((prev) => {
+                const next = new Set(prev);
+                next.delete(targetDomain);
+                return next;
+            });
+        }
     };
 
-    const filteredResults = results?.results.filter((r) => {
+    const filteredResults = results?.results?.filter((r) => {
         if (filter === "all") return true;
         if (filter === "registered") return r.is_registered;
         if (filter === "high-risk") return r.risk_score >= 70;
@@ -188,8 +531,7 @@ export default function ScannerPage() {
                             </span>
                         </h1>
                         <p className="text-slate-400 max-w-2xl mx-auto">
-                            Scan any domain for potential phishing threats. We check for typosquatting,
-                            homoglyphs, and other lookalike domain techniques.
+                            Advanced 3-layer analysis with DOM inspection, screenshot capture, and Thai phishing detection.
                         </p>
                     </div>
 
@@ -207,7 +549,7 @@ export default function ScannerPage() {
                                             type="text"
                                             value={domain}
                                             onChange={(e) => setDomain(e.target.value)}
-                                            placeholder="yourcompany.com"
+                                            placeholder="kbank.com"
                                             className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                                             onKeyDown={(e) => e.key === "Enter" && startScan()}
                                             disabled={isScanning}
@@ -230,11 +572,24 @@ export default function ScannerPage() {
                                                 Scanning
                                             </span>
                                         ) : (
-                                            <span className="flex items-center gap-2">
-                                                🔍 Scan
-                                            </span>
+                                            <span className="flex items-center gap-2">🔍 Scan</span>
                                         )}
                                     </button>
+                                </div>
+
+                                {/* Deep scan toggle */}
+                                <div className="mt-4 flex items-center gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={useDeepScan}
+                                            onChange={(e) => setUseDeepScan(e.target.checked)}
+                                            className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-cyan-500 focus:ring-cyan-500"
+                                        />
+                                        <span className="text-sm text-slate-400">
+                                            Deep Scan (3-layer analysis with DOM & screenshots)
+                                        </span>
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -244,6 +599,10 @@ export default function ScannerPage() {
                     {isScanning && (
                         <div className="max-w-2xl mx-auto mb-12">
                             <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6 backdrop-blur-sm">
+                                <LayerProgress
+                                    current={scanProgress < 30 ? 0 : scanProgress < 60 ? 1 : scanProgress < 90 ? 2 : 3}
+                                    layers={["Bouncer", "Detective", "Judge"]}
+                                />
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm text-slate-400">{scanStatus}</span>
                                     <span className="text-sm text-cyan-400">{Math.round(scanProgress)}%</span>
@@ -262,13 +621,13 @@ export default function ScannerPage() {
                     {results && (
                         <div className="space-y-6">
                             {/* Stats Cards */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                                 <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6 backdrop-blur-sm">
-                                    <p className="text-sm text-slate-400 mb-1">Total Permutations</p>
-                                    <p className="text-3xl font-bold text-cyan-400">{results.total_permutations.toLocaleString()}</p>
+                                    <p className="text-sm text-slate-400 mb-1">Permutations</p>
+                                    <p className="text-3xl font-bold text-cyan-400">{results.total_permutations?.toLocaleString()}</p>
                                 </div>
                                 <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6 backdrop-blur-sm">
-                                    <p className="text-sm text-slate-400 mb-1">Registered Domains</p>
+                                    <p className="text-sm text-slate-400 mb-1">Registered</p>
                                     <p className="text-3xl font-bold text-amber-400">{results.registered_count}</p>
                                 </div>
                                 <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6 backdrop-blur-sm">
@@ -276,8 +635,12 @@ export default function ScannerPage() {
                                     <p className="text-3xl font-bold text-red-400">{results.high_risk_count}</p>
                                 </div>
                                 <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6 backdrop-blur-sm">
+                                    <p className="text-sm text-slate-400 mb-1">Deep Analyzed</p>
+                                    <p className="text-3xl font-bold text-purple-400">{Object.keys(deepAnalyses).length}</p>
+                                </div>
+                                <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6 backdrop-blur-sm">
                                     <p className="text-sm text-slate-400 mb-1">Scan Time</p>
-                                    <p className="text-3xl font-bold text-green-400">{results.scan_time.toFixed(1)}s</p>
+                                    <p className="text-3xl font-bold text-green-400">{results.scan_time?.toFixed(1)}s</p>
                                 </div>
                             </div>
 
@@ -288,8 +651,8 @@ export default function ScannerPage() {
                                         key={f}
                                         onClick={() => setFilter(f)}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === f
-                                                ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
-                                                : "text-slate-400 hover:text-white border border-slate-700/50 hover:border-slate-600"
+                                            ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
+                                            : "text-slate-400 hover:text-white border border-slate-700/50 hover:border-slate-600"
                                             }`}
                                     >
                                         {f === "all" ? "All Results" : f === "registered" ? "Registered Only" : "High Risk"}
@@ -297,69 +660,27 @@ export default function ScannerPage() {
                                 ))}
                             </div>
 
-                            {/* Results Table */}
-                            <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl overflow-hidden backdrop-blur-sm">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr className="border-b border-slate-700/50">
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Domain</th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Type</th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Risk</th>
-                                                <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">DNS</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-700/30">
-                                            {filteredResults.map((result, i) => (
-                                                <tr key={i} className="hover:bg-slate-800/50 transition-colors">
-                                                    <td className="px-6 py-4">
-                                                        <span className="font-mono text-sm text-cyan-400">{result.domain}</span>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className="px-2 py-1 rounded bg-slate-700/50 text-xs text-slate-300">
-                                                            {result.fuzzer}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        {result.is_registered ? (
-                                                            <span className="flex items-center gap-1.5 text-amber-400 text-sm">
-                                                                <span className="w-2 h-2 bg-amber-400 rounded-full" />
-                                                                Registered
-                                                            </span>
-                                                        ) : (
-                                                            <span className="flex items-center gap-1.5 text-slate-500 text-sm">
-                                                                <span className="w-2 h-2 bg-slate-500 rounded-full" />
-                                                                Available
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <RiskBadge score={result.risk_score} />
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        {result.dns_a.length > 0 ? (
-                                                            <span className="font-mono text-xs text-slate-400">
-                                                                {result.dns_a[0]}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-slate-600 text-sm">—</span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {filteredResults.length === 0 && (
-                                    <div className="text-center py-12 text-slate-500">
-                                        No results match the current filter
-                                    </div>
-                                )}
+                            {/* Results Cards */}
+                            <div className="space-y-3">
+                                {filteredResults.map((result, i) => (
+                                    <ResultCard
+                                        key={`${result.domain}-${i}`}
+                                        result={result}
+                                        onAnalyze={() => analyzeSingleDomain(result.domain)}
+                                        isAnalyzing={analyzingDomains.has(result.domain)}
+                                        deepAnalysis={deepAnalyses[result.domain]}
+                                    />
+                                ))}
                             </div>
 
+                            {filteredResults.length === 0 && (
+                                <div className="text-center py-12 text-slate-500 bg-slate-900/50 rounded-xl">
+                                    No results match the current filter
+                                </div>
+                            )}
+
                             {/* Export Button */}
-                            <div className="flex justify-end">
+                            <div className="flex justify-end gap-2">
                                 <button className="px-6 py-2 rounded-lg border border-slate-600 text-slate-300 hover:border-slate-400 hover:text-white transition-all flex items-center gap-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -375,7 +696,10 @@ export default function ScannerPage() {
                         <div className="text-center py-16">
                             <div className="text-6xl mb-6">🔍</div>
                             <h3 className="text-xl font-semibold text-slate-300 mb-2">Ready to Scan</h3>
-                            <p className="text-slate-500">Enter a domain above to check for potential phishing threats</p>
+                            <p className="text-slate-500 max-w-md mx-auto">
+                                Enter a domain to check for typosquatting, homoglyphs, and phishing domains.
+                                Our 3-layer system will analyze each threat.
+                            </p>
                         </div>
                     )}
                 </div>
