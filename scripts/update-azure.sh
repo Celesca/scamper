@@ -26,39 +26,55 @@ echo -e "${CYAN}╔════════════════════�
 echo -e "${CYAN}║           SCAMPER - Azure Update Script                          ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
 
-# Build and push new images
-echo -e "\n${YELLOW}[1/4]${NC} Building new Backend image..."
-az acr build \
-    --registry $ACR_NAME \
-    --image scamper-backend:latest \
-    --file backend/Dockerfile \
-    backend/
-echo -e "${GREEN}✓ Backend image updated${NC}"
+# Parse arguments
+TARGET="all"
+if [ ! -z "$1" ]; then
+    TARGET="$1"
+fi
 
-echo -e "\n${YELLOW}[2/4]${NC} Building new Frontend image..."
-az acr build \
-    --registry $ACR_NAME \
-    --image scamper-frontend:latest \
-    --file frontend/Dockerfile \
-    frontend/
-echo -e "${GREEN}✓ Frontend image updated${NC}"
+# Build and push new images
+if [ "$TARGET" == "all" ] || [ "$TARGET" == "backend" ]; then
+    echo -e "\n${YELLOW}[1/4]${NC} Building new Backend image..."
+    az acr build \
+        --registry $ACR_NAME \
+        --image scamper-backend:latest \
+        --file backend/Dockerfile \
+        backend/
+    echo -e "${GREEN}✓ Backend image updated${NC}"
+fi
+
+if [ "$TARGET" == "all" ] || [ "$TARGET" == "frontend" ]; then
+    echo -e "\n${YELLOW}[2/4]${NC} Building new Frontend image..."
+    az acr build \
+        --registry $ACR_NAME \
+        --image scamper-frontend:latest \
+        --file frontend/Dockerfile \
+        --build-arg NEXT_PUBLIC_API_URL="${BACKEND_URL}" \
+        frontend/
+    echo -e "${GREEN}✓ Frontend image updated${NC}"
+fi
 
 # Update container apps
-echo -e "\n${YELLOW}[3/4]${NC} Updating Backend Container App..."
-az containerapp update \
-    --name $BACKEND_APP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --image "${ACR_LOGIN_SERVER}/scamper-backend:latest" \
-    --output none
-echo -e "${GREEN}✓ Backend updated${NC}"
+if [ "$TARGET" == "all" ] || [ "$TARGET" == "backend" ]; then
+    echo -e "\n${YELLOW}[3/4]${NC} Updating Backend Container App..."
+    az containerapp update \
+        --name $BACKEND_APP_NAME \
+        --resource-group $RESOURCE_GROUP \
+        --image "${ACR_LOGIN_SERVER}/scamper-backend:latest" \
+        --output none
+    echo -e "${GREEN}✓ Backend updated${NC}"
+fi
 
-echo -e "\n${YELLOW}[4/4]${NC} Updating Frontend Container App..."
-az containerapp update \
-    --name $FRONTEND_APP_NAME \
-    --resource-group $RESOURCE_GROUP \
-    --image "${ACR_LOGIN_SERVER}/scamper-frontend:latest" \
-    --output none
-echo -e "${GREEN}✓ Frontend updated${NC}"
+if [ "$TARGET" == "all" ] || [ "$TARGET" == "frontend" ]; then
+    echo -e "\n${YELLOW}[4/4]${NC} Updating Frontend Container App..."
+    az containerapp update \
+        --name $FRONTEND_APP_NAME \
+        --resource-group $RESOURCE_GROUP \
+        --image "${ACR_LOGIN_SERVER}/scamper-frontend:latest" \
+        --set-env-vars "NEXT_PUBLIC_API_URL=${BACKEND_URL}" "NODE_ENV=production" \
+        --output none
+    echo -e "${GREEN}✓ Frontend updated (with API URL: ${BACKEND_URL})${NC}"
+fi
 
 echo -e "\n${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║                    UPDATE COMPLETE!                              ║${NC}"

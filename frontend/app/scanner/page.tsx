@@ -402,8 +402,13 @@ export default function ScannerPage() {
     const [useDeepScan, setUseDeepScan] = useState(true);
 
     const startScan = useCallback(async () => {
-        if (!domain.trim()) {
-            setError("Please enter a domain to scan");
+        const cleanDomain = domain.trim()
+            .replace(/^https?:\/\//i, '')
+            .replace(/^www\./i, '')
+            .replace(/\/.*$/, '');
+
+        if (!cleanDomain) {
+            setError("Please enter a valid domain to scan");
             return;
         }
 
@@ -436,7 +441,7 @@ export default function ScannerPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    domain: domain.trim(),
+                    domain: cleanDomain,
                     include_screenshots: true,
                     include_dom: true,
                     analyze_registered_only: true
