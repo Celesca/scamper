@@ -14,6 +14,16 @@ export default function Home() {
         {/* Hero Section */}
         <section className="min-h-[90vh] flex items-center justify-center px-6">
           <div className="max-w-5xl mx-auto text-center">
+            {/* Logo and Brand Name */}
+            <div className="flex flex-col items-center justify-center mb-8">
+              <h2 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent tracking-tight mb-2">
+                SCAMPER
+              </h2>
+              <p className="text-slate-400 text-sm font-medium tracking-widest uppercase">
+                Thai Brand Guardian
+              </p>
+            </div>
+
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-sm font-medium mb-8 animate-pulse">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />

@@ -22,3 +22,7 @@ numpy
 
 # Fake data generation for poisoning bot
 faker
+
+# Production server
+gunicorn
+eventlet
