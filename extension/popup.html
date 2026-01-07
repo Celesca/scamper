@@ -1,134 +1,317 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #2563eb;
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
-            --bg: #0f172a;
-            --text: #f8fafc;
+            --bg: #0b0e14;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text: #ffffff;
             --text-secondary: #94a3b8;
         }
 
-        body {
-            width: 320px;
+        * {
+            box-sizing: border-box;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+        }
+
+        body {
+            width: 340px;
             background-color: var(--bg);
             color: var(--text);
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            padding: 24px;
+        }
+
+        .container {
+            position: relative;
+        }
+
+        /* Decorative Background Glows */
+        .glow-1 {
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 100px;
+            height: 100px;
+            background: var(--primary);
+            filter: blur(60px);
+            opacity: 0.2;
+            z-index: -1;
         }
 
         .header {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 24px;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .logo {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, var(--primary), #60a5fa);
-            border-radius: 8px;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, var(--primary), #a5b4fc);
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            font-size: 20px;
+            font-weight: 700;
+            font-size: 16px;
+            box-shadow: 0 0 15px var(--primary-glow);
         }
 
         .title {
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-        }
-
-        .status-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 16px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .status-icon {
-            font-size: 48px;
-            margin-bottom: 8px;
-        }
-
-        .status-text {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: 600;
-            margin-bottom: 4px;
+            letter-spacing: -0.01em;
         }
 
-        .status-score {
-            font-size: 14px;
+        .settings-btn {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Meter Section */
+        .meter-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .svg-meter {
+            width: 160px;
+            height: 160px;
+            transform: rotate(-90deg);
+        }
+
+        .meter-bg {
+            fill: none;
+            stroke: var(--glass-border);
+            stroke-width: 8;
+        }
+
+        .meter-fill {
+            fill: none;
+            stroke: var(--primary);
+            stroke-width: 8;
+            stroke-dasharray: 440;
+            stroke-dashoffset: 440;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s;
+        }
+
+        .score-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .score-value {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .score-label {
+            font-size: 12px;
             color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 4px;
         }
 
-        .reasons {
-            margin-top: 16px;
-            text-align: left;
-            font-size: 13px;
+        .status-badge {
+            margin-top: -10px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            z-index: 1;
+        }
+
+        /* Features/Reasons */
+        .details-section {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 16px;
+            backdrop-filter: blur(20px);
+        }
+
+        .details-header {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            letter-spacing: 0.05em;
+        }
+
+        .reason-list {
+            list-style: none;
         }
 
         .reason-item {
             display: flex;
-            gap: 8px;
-            margin-bottom: 8px;
-            color: var(--text-secondary);
+            gap: 12px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #d1d5db;
+            animation: slideIn 0.3s ease-out forwards;
+            opacity: 0;
         }
 
-        .reason-bullet {
-            color: var(--primary);
+        @keyframes slideIn {
+            from {
+                transform: translateX(10px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
-        .loader {
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
+        .reason-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--primary);
+            margin-top: 6px;
+            flex-shrink: 0;
+            box-shadow: 0 0 8px var(--primary);
+        }
+
+        /* Loading Overlay */
+        #loader {
+            position: absolute;
+            inset: 0;
+            background: var(--bg);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--glass-border);
             border-top: 3px solid var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 20px auto;
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
-        .safe { border-color: var(--success); color: var(--success); }
-        .suspicious { border-color: var(--warning); color: var(--warning); }
-        .danger { border-color: var(--danger); color: var(--danger); }
+        /* Status Colors */
+        .status-safe {
+            color: var(--success);
+            border-color: rgba(16, 185, 129, 0.2);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .status-warning {
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.2);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .status-danger {
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.05);
+        }
     </style>
 </head>
+
 <body>
-    <div class="header">
-        <div class="logo">P</div>
-        <div class="title">Phishing Hunter</div>
+    <div id="loader">
+        <div class="spinner"></div>
     </div>
 
-    <div id="loading" class="loader"></div>
+    <div class="container">
+        <div class="glow-1"></div>
 
-    <div id="content" style="display: none;">
-        <div id="status-card" class="status-card">
-            <div id="status-icon" class="status-icon">🛡️</div>
-            <div id="status-text" class="status-text">Analyzing...</div>
-            <div id="status-score" class="status-score">Threat Score: 0/100</div>
+        <div class="header">
+            <div class="brand">
+                <div class="logo">S</div>
+                <div class="title">Scamper Hunter</div>
+            </div>
+            <div class="settings-btn" title="Detailed Analysis">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
+                </svg>
+            </div>
         </div>
 
-        <div id="reasons" class="reasons">
-            <!-- Reasons will be injected here -->
+        <div class="meter-container">
+            <svg class="svg-meter" viewBox="0 0 160 160">
+                <circle class="meter-bg" cx="80" cy="80" r="70"></circle>
+                <circle id="meter-fill" class="meter-fill" cx="80" cy="80" r="70"></circle>
+            </svg>
+            <div class="score-display">
+                <div id="score-value" class="score-value">0</div>
+                <div class="score-label">Risk Score</div>
+            </div>
+            <div id="status-badge" class="status-badge">Analyzing...</div>
+        </div>
+
+        <div class="details-section">
+            <div class="details-header">Threat Indicators</div>
+            <ul id="reason-list" class="reason-list">
+                <!-- Injected via popup.js -->
+            </ul>
         </div>
     </div>
 
     <script src="popup.js"></script>
 </body>
+
 </html>
