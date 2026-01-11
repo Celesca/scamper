@@ -1,11 +1,15 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "analyzePage") {
         analyzeWithBackend(request.data);
+    } else if (request.action === "updateBadge") {
+        chrome.action.setBadgeText({ text: request.text });
+        chrome.action.setBadgeBackgroundColor({ color: request.color });
     }
 });
 
 async function analyzeWithBackend(data) {
     try {
+        console.log("Escalating to Backend:", data);
         const response = await fetch("http://localhost:5000/analyze", {
             method: "POST",
             headers: {
@@ -13,28 +17,31 @@ async function analyzeWithBackend(data) {
             },
             body: JSON.stringify(data)
         });
+
+        if (!response.ok) throw new Error("Backend unavailable");
+
         const result = await response.json();
 
-        // Cache result for popup or update badge
+        // Cache result for popup
         chrome.storage.local.set({ lastResult: result });
 
+        // Update badge based on backend verdict
         if (result.status === "Phishing") {
             chrome.action.setBadgeText({ text: "!" });
-            chrome.action.setBadgeBackgroundColor({ color: "#FF0000" });
+            chrome.action.setBadgeBackgroundColor({ color: "#EF4444" });
 
-            // Optional: Show notification
             chrome.notifications.create({
                 type: "basic",
                 iconUrl: "icon.png",
                 title: "Phishing Warning!",
-                message: `This site looks like a phishing page. Reason: ${result.reasons[0]}`
+                message: `Escalated check: This site is confirmed as phishing. Reason: ${result.reasons[0]}`
             });
         } else if (result.status === "Suspicious") {
             chrome.action.setBadgeText({ text: "?" });
-            chrome.action.setBadgeBackgroundColor({ color: "#FFA500" });
+            chrome.action.setBadgeBackgroundColor({ color: "#F59E0B" });
         } else {
             chrome.action.setBadgeText({ text: "OK" });
-            chrome.action.setBadgeBackgroundColor({ color: "#00FF00" });
+            chrome.action.setBadgeBackgroundColor({ color: "#10B981" });
         }
     } catch (error) {
         console.error("Error communicating with backend:", error);
