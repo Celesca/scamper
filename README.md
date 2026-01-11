@@ -13,6 +13,8 @@
 
 </div>
 
+<video src="https://github.com/user-attachments/assets/6ab3fa16-3f2d-4f0d-ac8d-dc36ef5efd9b" width="720" muted autoplay loop playsinline controls></video>
+
 ---
 
 ## 🚀 The SCAMPER Suite
